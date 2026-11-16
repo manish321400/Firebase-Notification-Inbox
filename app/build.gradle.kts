@@ -78,7 +78,8 @@ dependencies {
     // Coil (image loading)
     implementation(libs.coil.compose)
 
-    // Firebase
+    // Firebase (BoM 35.2.0, Analytics, Messaging)
     implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
     implementation(libs.firebase.messaging)
 }
