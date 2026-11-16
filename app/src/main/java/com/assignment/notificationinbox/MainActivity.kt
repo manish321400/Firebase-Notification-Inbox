@@ -1,6 +1,7 @@
 package com.assignment.notificationinbox
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -13,24 +14,47 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.assignment.notificationinbox.service.FCMService
 import com.assignment.notificationinbox.ui.navigation.AppNavGraph
+import com.assignment.notificationinbox.ui.navigation.Screen
 import com.assignment.notificationinbox.ui.theme.NotificationInboxTheme
 import dagger.hilt.android.AndroidEntryPoint
 
+/**
+ * Main entry activity for the Notification Inbox application.
+ *
+ * Handles:
+ * - Runtime notification permission request (Android 13+)
+ * - System notification click routing to Notification Inbox (per Requirement 4)
+ * - SingleTop intent updates via onNewIntent
+ */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    private var pendingNotificationId by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Extract any notification intent data (from system notification click)
+        extractNotificationIntent(intent)
+
         setContent {
             NotificationInboxTheme {
-                // Request notification permission on Android 13+ (API 33+)
+                // Runtime permission request for POST_NOTIFICATIONS on Android 13+
                 val permissionLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestPermission()
-                ) { /* handle granted / denied */ }
+                ) { isGranted ->
+                    // Notification permission state updated
+                }
 
                 LaunchedEffect(Unit) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -49,9 +73,33 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
+
+                    // Handle navigation if launched from notification tap
+                    LaunchedEffect(pendingNotificationId) {
+                        pendingNotificationId?.let {
+                            // Per Requirement 4: System Notification -> Notification Inbox
+                            // Pop back to Inbox if navigated elsewhere
+                            navController.popBackStack(Screen.Inbox.route, inclusive = false)
+                            pendingNotificationId = null
+                        }
+                    }
+
                     AppNavGraph(navController = navController)
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        extractNotificationIntent(intent)
+    }
+
+    private fun extractNotificationIntent(intent: Intent?) {
+        val notifId = intent?.getStringExtra(FCMService.EXTRA_NOTIFICATION_ID)
+        if (!notifId.isNullOrBlank()) {
+            pendingNotificationId = notifId
         }
     }
 }
