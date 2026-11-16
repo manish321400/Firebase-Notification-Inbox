@@ -1,0 +1,67 @@
+package com.assignment.notificationinbox.data.local
+
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
+
+/**
+ * Data Access Object for notification operations.
+ *
+ * Uses REPLACE strategy on insert to handle duplicate notification IDs —
+ * if a notification with the same ID arrives again, it updates the existing entry
+ * rather than creating a duplicate.
+ */
+@Dao
+interface NotificationDao {
+
+    /**
+     * Observe all notifications ordered by received time (newest first).
+     */
+    @Query("SELECT * FROM notifications ORDER BY receivedAt DESC")
+    fun getAllNotifications(): Flow<List<NotificationEntity>>
+
+    /**
+     * Get a single notification by its unique ID.
+     */
+    @Query("SELECT * FROM notifications WHERE id = :notificationId")
+    suspend fun getNotificationById(notificationId: String): NotificationEntity?
+
+    /**
+     * Insert a notification. If a notification with the same ID already exists,
+     * it will be replaced (handles duplicate notifications).
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertNotification(notification: NotificationEntity)
+
+    /**
+     * Mark a specific notification as read.
+     */
+    @Query("UPDATE notifications SET isRead = 1 WHERE id = :notificationId")
+    suspend fun markAsRead(notificationId: String)
+
+    /**
+     * Mark all notifications as read.
+     */
+    @Query("UPDATE notifications SET isRead = 1")
+    suspend fun markAllAsRead()
+
+    /**
+     * Delete a specific notification by ID.
+     */
+    @Query("DELETE FROM notifications WHERE id = :notificationId")
+    suspend fun deleteNotification(notificationId: String)
+
+    /**
+     * Delete all notifications (clear inbox).
+     */
+    @Query("DELETE FROM notifications")
+    suspend fun deleteAllNotifications()
+
+    /**
+     * Get count of unread notifications (observed as Flow for live updates).
+     */
+    @Query("SELECT COUNT(*) FROM notifications WHERE isRead = 0")
+    fun getUnreadCount(): Flow<Int>
+}
