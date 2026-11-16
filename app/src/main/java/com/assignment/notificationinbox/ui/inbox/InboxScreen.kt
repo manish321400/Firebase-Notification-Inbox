@@ -33,8 +33,6 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.DismissDirection
-import androidx.compose.material3.DismissValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -44,12 +42,13 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SwipeToDismiss
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
-import androidx.compose.material3.rememberDismissState
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,7 +71,7 @@ import com.assignment.notificationinbox.ui.components.NotificationItem
  * - Filter chips: All, Unread, Read
  * - Sort order toggle: Newest / Oldest
  * - Mark all as read
- * - Swipe-to-delete with animated exit
+ * - Swipe-to-delete with animated exit (Material 3 SwipeToDismissBox)
  * - Clear all inbox notifications with confirmation dialog
  * - Empty state UI for empty inbox or no matches
  * - In-app notification simulator dialog (for quick reviewer evaluation)
@@ -303,9 +302,9 @@ private fun SwipeToDeleteItem(
     onDelete: () -> Unit
 ) {
     var isRemoved by remember { mutableStateOf(false) }
-    val dismissState = rememberDismissState(
+    val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == DismissValue.DismissedToStart) {
+            if (value == SwipeToDismissBoxValue.EndToStart) {
                 isRemoved = true
                 true
             } else {
@@ -322,10 +321,11 @@ private fun SwipeToDeleteItem(
         visible = !isRemoved,
         exit = shrinkVertically(animationSpec = tween(300)) + fadeOut()
     ) {
-        SwipeToDismiss(
+        SwipeToDismissBox(
             state = dismissState,
-            directions = setOf(DismissDirection.EndToStart),
-            background = {
+            enableDismissFromStartToEnd = false,
+            enableDismissFromEndToStart = true,
+            backgroundContent = {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -343,7 +343,7 @@ private fun SwipeToDeleteItem(
                     )
                 }
             },
-            dismissContent = {
+            content = {
                 NotificationItem(
                     notification = notification,
                     onClick = onClick,
