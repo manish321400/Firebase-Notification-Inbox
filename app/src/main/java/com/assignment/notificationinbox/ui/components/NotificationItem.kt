@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -15,6 +16,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,11 +25,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import com.assignment.notificationinbox.R
 import com.assignment.notificationinbox.data.local.NotificationEntity
 import com.assignment.notificationinbox.ui.theme.UnreadBackground
@@ -35,7 +40,19 @@ import com.assignment.notificationinbox.util.TimeUtils
 
 /**
  * A single notification item card for the inbox list.
- * Displays banner image, title, description, timestamp, and read/unread state.
+ *
+ * Displays:
+ * - Banner image (with loading spinner & graceful error/fallback placeholder)
+ * - Title (with default fallback for missing title)
+ * - Description (with support for multiline or missing description)
+ * - Timestamp (human-readable relative format)
+ * - Read/Unread state (subtle background tint and indicator dot)
+ *
+ * Edge cases handled:
+ * - Missing/empty banner image: banner area smoothly hidden or fallback displayed
+ * - Invalid/broken banner URL: error placeholder shown without crashing
+ * - Missing title/description: sensible fallbacks displayed
+ * - Long text: cleanly truncated with ellipsis
  */
 @Composable
 fun NotificationItem(
@@ -60,25 +77,53 @@ fun NotificationItem(
         )
     ) {
         Column {
-            // Banner image (if available)
+            // Banner image (if available) with robust loading & error states
             if (!notification.bannerImg.isNullOrBlank()) {
-                AsyncImage(
-                    model = notification.bannerImg,
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(notification.bannerImg)
+                        .crossfade(true)
+                        .build(),
                     contentDescription = "Notification banner",
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(160.dp)
                         .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
                     contentScale = ContentScale.Crop,
-                    error = painterResource(id = R.drawable.ic_notification),
-                    fallback = painterResource(id = R.drawable.ic_notification)
+                    loading = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        }
+                    },
+                    error = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_broken_image),
+                                contentDescription = "Image unavailable",
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
                 )
             }
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
+                    .padding(14.dp),
                 verticalAlignment = Alignment.Top
             ) {
                 // Unread indicator dot
@@ -89,33 +134,40 @@ fun NotificationItem(
                             .size(8.dp)
                             .background(UnreadDot, CircleShape)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                 }
 
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
-                    // Title
+                    // Title with fallback
+                    val displayTitle = if (notification.title.isNullOrBlank()) {
+                        "Notification"
+                    } else {
+                        notification.title
+                    }
+
                     Text(
-                        text = notification.title ?: "No Title",
+                        text = displayTitle,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.SemiBold,
+                        fontWeight = if (notification.isRead) FontWeight.Medium else FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // Description
-                    Text(
-                        text = notification.description ?: "",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Spacer(modifier = Modifier.height(6.dp))
+                    // Description (if present)
+                    if (!notification.description.isNullOrBlank()) {
+                        Text(
+                            text = notification.description,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
 
                     // Timestamp
                     Text(

@@ -4,14 +4,12 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 /**
  * Data Access Object for notification operations.
- *
- * Uses REPLACE strategy on insert to handle duplicate notification IDs —
- * if a notification with the same ID arrives again, it updates the existing entry
- * rather than creating a duplicate.
+ * Provides full CRUD operations and duplicate-safe insertion.
  */
 @Dao
 interface NotificationDao {
@@ -29,11 +27,22 @@ interface NotificationDao {
     suspend fun getNotificationById(notificationId: String): NotificationEntity?
 
     /**
-     * Insert a notification. If a notification with the same ID already exists,
-     * it will be replaced (handles duplicate notifications).
+     * Check if a notification with the given ID already exists.
+     */
+    @Query("SELECT EXISTS(SELECT 1 FROM notifications WHERE id = :notificationId)")
+    suspend fun existsById(notificationId: String): Boolean
+
+    /**
+     * Insert a notification. If conflict, ignore (repository handles smart upsert).
      */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertNotification(notification: NotificationEntity)
+    suspend fun insertNotification(notification: NotificationEntity): Long
+
+    /**
+     * Update an existing notification.
+     */
+    @Update
+    suspend fun updateNotification(notification: NotificationEntity)
 
     /**
      * Mark a specific notification as read.
