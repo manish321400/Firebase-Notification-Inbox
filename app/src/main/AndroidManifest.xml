@@ -13,6 +13,8 @@
         android:roundIcon="@drawable/ic_notification"
         android:supportsRtl="true"
         android:theme="@style/Theme.NotificationInbox"
+        android:hardwareAccelerated="true"
+        android:enableOnBackInvokedCallback="true"
         tools:targetApi="34">
 
         <activity

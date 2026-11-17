@@ -19,19 +19,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.assignment.notificationinbox.service.FCMService
 import com.assignment.notificationinbox.ui.navigation.AppNavGraph
 import com.assignment.notificationinbox.ui.navigation.Screen
 import com.assignment.notificationinbox.ui.theme.NotificationInboxTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
 
 /**
  * Main entry activity for the Notification Inbox application.
  *
  * Handles:
- * - Runtime notification permission request (Android 13+)
+ * - Runtime notification permission request (Android 13+) with smooth delay to avoid cold-start focus timeout
  * - System notification click routing to Notification Inbox (per Requirement 4)
  * - SingleTop intent updates via onNewIntent
  */
@@ -57,6 +57,9 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(Unit) {
+                    // Small delay to let initial composition and window focus settle smoothly
+                    // Prevents input dispatching FocusEvent timeout during cold start on slower emulators
+                    delay(600)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         if (ContextCompat.checkSelfPermission(
                                 this@MainActivity,

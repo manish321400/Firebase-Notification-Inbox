@@ -5,11 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.assignment.notificationinbox.data.local.NotificationEntity
 import com.assignment.notificationinbox.data.repository.NotificationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -27,7 +29,7 @@ enum class SortOrder {
  *
  * Supports:
  * - Reactive notification list with filtering (All / Unread / Read)
- * - Sorting (Newest first / Oldest first)
+ * - Sorting (Newest first / Oldest first) offloaded to Dispatchers.Default
  * - Real-time unread count
  * - Mark all as read
  * - Delete individual notifications
@@ -52,7 +54,7 @@ class InboxViewModel @Inject constructor(
     val showSimulatorDialog: StateFlow<Boolean> = _showSimulatorDialog.asStateFlow()
 
     /**
-     * Filtered and sorted notifications stream.
+     * Filtered and sorted notifications stream, processed on background dispatcher.
      */
     val notifications: StateFlow<List<NotificationEntity>> = combine(
         repository.getAllNotifications(),
@@ -69,17 +71,20 @@ class InboxViewModel @Inject constructor(
             SortOrder.NEWEST_FIRST -> filtered.sortedByDescending { it.receivedAt }
             SortOrder.OLDEST_FIRST -> filtered.sortedBy { it.receivedAt }
         }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = emptyList()
-    )
+    }
+        .flowOn(Dispatchers.Default)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
 
     /**
      * Live count of unread notifications for badge display.
      */
     val unreadCount: StateFlow<Int> =
         repository.getUnreadCount()
+            .flowOn(Dispatchers.Default)
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
