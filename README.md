@@ -1,170 +1,141 @@
-# Firebase Notification Inbox (Android)
+# Notification Inbox
 
-A modern Native Android application built with **Kotlin** and **Jetpack Compose** that integrates **Firebase Cloud Messaging (FCM)** and provides a persistent, locally maintained **Notification Inbox**.
+A native Android application built with **Kotlin** and **Jetpack Compose** that integrates **Firebase Cloud Messaging (FCM)** to receive, display, and locally persist push notifications in an interactive Notification Inbox.
 
 ---
 
-## 📱 Features
+## Project Overview
 
-### Core Requirements
-- **Firebase Cloud Messaging (FCM)**: Receives push notifications and parses custom JSON data payloads.
-- **System Notifications**: Displays incoming notifications using the official Android Notification system with:
-  - **Notification Channel ID**: `assignment`
-  - **Notification Channel Name**: `Assignment`
-  - High importance with sound, vibration, and application icon.
-- **Local Persistence (Room Database)**:
-  - Stores all received notifications locally using Room SQLite database.
-  - History and read/unread states persist across application restarts.
-- **Notification Inbox**:
-  - Displays list of received notifications showing:
-    - Banner image (with loading state and graceful fallback)
-    - Title
-    - Description
-    - Formatted relative timestamp ("5 min ago", "2 hours ago", etc.)
-    - Read/Unread state indicator (blue dot and tinted background)
+**Notification Inbox** provides a seamless push notification experience with local history management and offline persistence:
+
+- **Push Notification Integration**: Receives remote messages via Firebase Cloud Messaging (FCM) containing rich data payloads (unique ID, title, description, banner image URL, and timestamp).
+- **System Notifications**: Posts system notifications on a dedicated high-priority channel (`assignment` / `Assignment`) with application icon, expandable text, and banner images (`BigPictureStyle`).
+- **Interactive Inbox**:
+  - Displays a chronological list of notifications with banner previews, titles, descriptions, relative timestamps, and unread indicators.
+  - Supports filter chips (**All**, **Unread**, **Read**) with live unread badge counters.
+  - Supports sort toggling (**Newest First** / **Oldest First**).
+  - Swipe-to-delete with animated dismissal and a confirmation dialog for clearing the entire inbox.
 - **Notification Details**:
-  - Selecting an item opens the Notification Details screen showing banner, title, description, and full date/time.
-  - Opening a notification **automatically marks it as Read**, instantly updated in the Inbox.
-- **System Notification Navigation Flow**:
-  - Tapping a received system notification directly opens the **Notification Inbox** (`System Notification → Notification Inbox`).
-- **Duplicate Notification Handling**:
-  - Notifications with duplicate `id` values do not create duplicate database entries.
-  - Content is updated while preserving the user's existing read/unread state.
-- **Error & Edge-Case Handling**:
-  - **Missing or broken banner images**: Displays a graceful fallback without crashing or blocking notification content.
-  - **Missing optional data**: Safe defaults for null/empty titles, descriptions, and banner images.
-  - **Duplicate notification IDs**: Idempotent insert preventing duplicates.
-  - **Application restart**: State fully persisted via Room database.
-
-### 🌟 Enhancements
-- **Unread Notification Badge**: Live unread count dynamically rendered on the top app bar.
-- **Filter Chips**: Filter by **All**, **Unread**, or **Read**.
-- **Sort Toggle**: Switch between **Newest First** and **Oldest First**.
-- **Swipe-to-Delete**: Swipe any notification to the left to delete it with smooth exit animation.
-- **Mark All as Read**: One-tap action in the top bar to mark all notifications as read.
-- **Clear Inbox**: Delete all notifications with a safety confirmation dialog.
-- **Empty State UI**: Informative empty states tailored to each filter.
-- **In-App Notification Simulator**: Built-in test panel allowing evaluators to simulate all 5 notification scenarios (standard, duplicate ID, broken banner, no image, minimal data) directly on device without requiring a Firebase Console session.
+  - Tapping any notification opens a dedicated detail screen showing full-resolution banner graphics, title, formatted date/time, and complete description.
+  - Opening a notification automatically transitions its state to **Read**, which immediately reflects across the inbox.
+- **Deep Navigation Flow**:
+  - Tapping a system tray notification launches the app directly into the **Notification Inbox**.
+  - Navigating to details maintains standard back-stack behavior.
+- **Duplicate Prevention & Resiliency**:
+  - Guarantees that notifications sharing the same `id` never produce duplicate records in the inbox.
+  - Gracefully handles missing, corrupted, or unreachable banner URLs without blocking text content or causing crashes.
+  - Includes a built-in notification test simulator for offline verification.
 
 ---
 
-## 🛠️ Architecture & Tech Stack
+## Setup and Build Instructions
 
-This project follows the **MVVM (Model-View-ViewModel)** architectural pattern adhering to official Android Architecture Guidelines:
+### Prerequisites
+- **Android Studio**: Ladybug / Jellyfish / Hedgehog (2023.1.1+) or newer
+- **JDK**: Java 17 or Java 21
+- **Android SDK**: Compile SDK 34, Min SDK 26 (Android 8.0 Oreo), Target SDK 34 (Android 14)
 
-- **Language**: Kotlin 2.0
-- **UI Framework**: Jetpack Compose with Material 3 design system
-- **Dependency Injection**: Hilt (Dagger Hilt 2.51.1)
-- **Local Database**: Room 2.6.1 with Coroutines & Kotlin Flow
-- **Image Loading**: Coil 2.6.0 (`SubcomposeAsyncImage` with crossfade and error states)
-- **Navigation**: Jetpack Navigation Compose 2.7.7
-- **Push Notifications**: Firebase Cloud Messaging (FCM) via Firebase BoM 33.1.0
-- **Asynchronous Flow**: Kotlin Coroutines & StateFlow
+### Clone and Open
+```bash
+git clone git@github.com:manish321400/Firebase-Notification-Inbox.git
+cd Firebase-Notification-Inbox
+```
+Open the project root directory in Android Studio and allow Gradle to complete dependency synchronization.
+
+### Build via Command Line
+To build the debug APK using the included Gradle wrapper:
+
+```bash
+# On Linux / macOS
+./gradlew assembleDebug
+
+# On Windows (PowerShell / Command Prompt)
+.\gradlew.bat assembleDebug
+```
+
+The compiled APK will be generated at:
+```text
+app/build/outputs/apk/debug/app-debug.apk
+```
+A pre-built, tested APK is also conveniently available in the repository at [`apk/app-debug.apk`](apk/app-debug.apk).
 
 ---
 
-## 📥 Notification Payload Format
+## Firebase Setup and Configuration
 
-The application expects FCM notifications with the following data payload format:
+To connect this application to your own Firebase project:
+
+1. **Create/Open Project in Firebase Console**:
+   - Navigate to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
+2. **Register Android Application**:
+   - Register an Android app with the package name:
+     ```text
+     com.assignment.notificationinbox
+     ```
+3. **Add `google-services.json`**:
+   - Download the generated `google-services.json` from the Firebase Console.
+   - Place the file inside the `app/` directory of the project:
+     ```text
+     app/google-services.json
+     ```
+   *(Note: The project includes a template configuration to allow immediate local compilation. Replace it with your genuine Firebase file for live messaging).*
+
+### Notification Data Payload Format
+When sending custom push messages via FCM REST API or Firebase Console, use the following payload structure:
 
 ```json
 {
   "id": "notification_101",
   "title": "New Notification",
-  "description": "This is a sample notification for the assignment.",
-  "bannerImg": "https://example.com/banner.jpg",
-  "timestamp": "1791873000000"
+  "description": "This is a sample notification description.",
+  "bannerImg": "https://picsum.photos/600/300",
+  "timestamp": "1716384000000"
 }
 ```
 
-- `id` (String): Unique identifier for each notification (primary key).
-- `title` (String, optional): Title of the notification.
-- `description` (String, optional): Notification body message.
-- `bannerImg` (String, optional): URL to a banner image.
-- `timestamp` (String / Long, optional): Epoch timestamp in milliseconds.
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `id` | String | Unique identifier for the notification (Primary Key). |
+| `title` | String | Notification headline (optional). |
+| `description` | String | Notification body text (optional). |
+| `bannerImg` | String | HTTP/HTTPS image URL for banner display (optional). |
+| `timestamp` | String / Long | Epoch timestamp in milliseconds (optional). |
+
+### In-App Simulator (Instant Testing)
+For quick testing without sending messages through the Firebase Console, tap the floating **"Test Notification"** button on the inbox screen. This enables testing:
+- Standard notifications with images
+- Duplicate ID handling (`notification_101`)
+- Broken or unreachable image URLs
+- Text-only notifications (null banner)
+- Minimal payloads (missing optional fields)
 
 ---
 
-## 🚀 Setup & Build Instructions
+## Libraries and Technologies Used
 
-### Prerequisites
-- **Android Studio** (Hedgehog 2023.1.1 or Ladybug / Jellyfish / newer)
-- **JDK 17**
-- **Android SDK**: Min SDK 26 (Android 8.0), Target SDK 34 (Android 14)
-
-### Clone the Repository
-```bash
-git clone git@github.com:manish321400/Firebase-Notification-Inbox.git
-cd Firebase-Notification-Inbox
-```
-
-### Firebase Configuration
-1. Go to the [Firebase Console](https://console.firebase.google.com/).
-2. Create a project and add an Android application with package name:
-   ```
-   com.assignment.notificationinbox
-   ```
-3. Download the `google-services.json` file.
-4. Place `google-services.json` into the `app/` folder of this project:
-   ```
-   app/google-services.json
-   ```
-*(Note: Per security guidelines, credentials and private keys are excluded from git repository via `.gitignore`.)*
-
-### Build the Project
-Open the project in Android Studio, let Gradle sync, then run:
-
-```bash
-# Build Debug APK
-./gradlew assembleDebug
-
-# Output APK path:
-# app/build/outputs/apk/debug/app-debug.apk
-```
+- **Kotlin**: Core language (v2.0.0)
+- **Jetpack Compose & Material 3**: Declarative UI toolkit with Material 3 design tokens
+- **Room Database**: Local SQLite abstraction layer for offline data persistence
+- **Hilt (Dagger)**: Dependency injection for architecture decoupling
+- **Navigation Compose**: Type-safe navigation and back-stack handling
+- **Firebase Cloud Messaging (FCM)**: Push notification reception and system tray delivery
+- **Firebase Analytics**: App analytics via Firebase BoM
+- **Coil Compose**: Asynchronous image loading with image caching, transformation, and error placeholders
+- **Kotlin Coroutines & Flow**: Asynchronous state management and reactive database queries
 
 ---
 
-## 🧪 Testing Push Notifications
+## Assumptions Made During Implementation
 
-### Method 1: Using the In-App Test Simulator (Instant Verification)
-1. Launch the app on an Android device or emulator.
-2. Tap the floating **"Test Notification"** button at the bottom right.
-3. Choose any scenario to evaluate:
-   - **Standard Notification (with Image)**: Verifies image loading, title, description, timestamp, and unread state.
-   - **Duplicate ID ('notification_101')**: Simulates multiple pushes with the same ID to verify that no duplicates are created in the inbox.
-   - **Invalid/Broken Banner URL**: Demonstrates graceful fallback without crashing.
-   - **No Banner Image**: Shows text-only layout adaptation.
-   - **Missing Optional Data**: Minimal payload handling.
-
-### Method 2: Using Firebase Console
-1. In Firebase Console, go to **Engage** → **Messaging**.
-2. Click **Create your first campaign** → **Firebase Notification messages**.
-3. Under **Notification**, enter a title and text.
-4. Under **Additional options**, add the custom data key-value pairs:
-   - `id`: `notification_102`
-   - `title`: `Summer Promo`
-   - `description`: `Check out the latest updates inside the app.`
-   - `bannerImg`: `https://picsum.photos/600/300`
-   - `timestamp`: `1716384000000`
-5. Send to the app target (`com.assignment.notificationinbox`).
+1. **Duplicate Notification Strategy**: When a notification is received with an `id` that already exists in the database, the system updates its content (title, description, banner) while strictly **preserving the user's current read/unread status** (`isRead`). A notification that the user has already read will not be reset to unread simply because an update payload arrived.
+2. **Missing Timestamps**: If the `timestamp` field is absent or malformed in the incoming payload, the app defaults to the current system time (`System.currentTimeMillis()`) to ensure chronological consistency.
+3. **Missing ID**: If a payload completely lacks an `id`, an ID is automatically derived from the FCM message ID or timestamp to prevent dropped notifications.
+4. **Navigation Flow**: Following standard system notification conventions, tapping a tray notification lands the user directly on the main **Notification Inbox**. From there, tapping any specific card opens the **Notification Details** screen.
+5. **Target Compatibility**: Configured for `minSdk = 26` (Android 8.0 Oreo), covering >95% of active Android devices and supporting native notification channels without legacy support workarounds.
 
 ---
 
-## 📋 Assumptions Made During Implementation
+## Known Limitations
 
-1. **Duplicate Notification Behavior**: When a notification arrives with an ID that already exists, the repository updates the title, description, and banner image to reflect the latest content, but **preserves the user's existing read/unread status** so that a previously read notification is not erroneously reset to unread.
-2. **Missing Timestamps**: If the payload timestamp is absent or cannot be parsed, the system gracefully defaults to the current epoch time (`System.currentTimeMillis()`).
-3. **Missing ID**: If a payload completely lacks an `id` field, a unique ID is derived from the FCM message ID or timestamp to prevent dropped notifications.
-4. **Target Devices**: Min SDK is set to 26 (Android 8.0 Oreo), covering 95%+ of active Android devices and supporting native notification channels.
-
----
-
-## ⚠️ Known Limitations
-
-1. **Network Connectivity**: In offline mode, banner images that are not yet cached by Coil will display the broken-image fallback icon until connectivity is restored.
-2. **Firebase Setup**: Receiving live pushes from Firebase Console requires dropping a valid `google-services.json` into the `app/` directory (or using the integrated in-app notification simulator).
-
----
-
-## 📄 License
-This project is developed as an assignment submission.
+1. **Offline Image Display**: If the device is offline when a notification with a banner image is first viewed, a fallback placeholder icon is shown until network connectivity is restored and Coil can fetch and cache the graphic.
+2. **Device Battery Optimization**: Certain Android OEM devices (e.g., Xiaomi MIUI, Huawei EMUI, Samsung OneUI) apply aggressive background process termination. On such devices, high-priority FCM data messages or autostart permissions must be enabled in device settings for background delivery when the app is swiped away from Recents.
